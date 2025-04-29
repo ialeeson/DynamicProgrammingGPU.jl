@@ -12,7 +12,7 @@ function Adapt.adapt_structure(to::CUDA.CuArrayKernelAdaptor,
         CuTexture.(CuTextureArray{Float32,N}.(itp.itp);
             interpolation=order_to_itp(itp.order)),
         adapt_structure(to, itp.quadrature),
-        adapt_structure(to, itp.order),
+        itp.order,
         adapt_structure(to, itp.grid)
     )
 end
