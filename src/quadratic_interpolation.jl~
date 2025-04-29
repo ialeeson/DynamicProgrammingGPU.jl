@@ -1,0 +1,18 @@
+function weights(order, itp::Val{1}, a::Float32)
+    g0, g1 = _weights(order, itp, a)
+    h0 = g0 - 0.5f0
+    h1 = g1 + 1.5f0
+    return g0, g1, h0, h1
+end
+
+function _weights(::Val{1}, ::Val{1}, a::Float32)
+    w0 = a
+    w1 = 2.0f0 - a
+    return w0, w1
+end
+
+function _weights(::Val{2}, ::Val{3}, a::Float32)
+    w0 = 1.0f0
+    w1 = - 1.0f0
+    return w0, w1
+end

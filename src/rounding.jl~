@@ -1,0 +1,6 @@
+# CUDA.@device_override modf(x::Float64) = ccall("extern __nv_modf.f64", llvmcall, NTuple{2,Cdouble}, (Cdouble,), x)
+# CUDA.@device_override modf(x::Float32) = ccall("extern __nv_modf.f32", llvmcall, NTuple{2,Cfloat}, (Cfloat,), x)
+
+@inline lround(x) = round(Int, x)
+@device_override lround(x::Float32) = ccall("extern air.floor.f32", llvmcall, Int64, (Cfloat,), x)
+@device_override lround(x::Float16) = ccall("extern air.floor.f16", llvmcall, Int64, (Float16,), x)

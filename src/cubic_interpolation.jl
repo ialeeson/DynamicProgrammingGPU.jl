@@ -1,0 +1,124 @@
+function copyto!(itp::Interpolation{F,N,3}, A) where {F,N}
+    prefilter!(A)
+    copyto!(itp.itp, A)
+    itp.itp
+end
+
+# @generated function _interpolate(::Val{3}, t::Union{MtlDeviceArray{F,N}, CuDeviceArray{F,N}, Array{F,N}}, px, wx) where {F,N}
+
+#     g0, g1, h0, h1 = wx
+#     vals = g0 .* tex(t, px + h0) .+ g1 .* tex(t, px + h1)
+    
+#     sz = size(A)
+#     s = zero(F)
+#     Base.Cartesian.@nloops $N i i -> begin
+#         g0_i, g1_i, h0_i, h1_i = w[j]
+#         ((p[i] + h0_i, g0_i), (p[i] + h1_i, g1_i))
+#     end j -> begin
+#             px_j, w_j = i_j
+#     end begin
+#         vals += w = prod(Base.Cartesian.@ntuple($N,w)...)
+#         s += w * A[Base.Cartesian.@ntuple($N,px)...]
+#     end
+#     return (unpack(F, vals))
+# end
+
+
+function _interpolate(::Val{3}, t::Union{MtlDeviceArray{F}, CuDeviceArray{F}, Array{F}}, px, wx) where {F}
+    g0, g1, h0, h1 = wx
+    vals = g0 .* tex(t, px + h0) .+ g1 .* tex(t, px + h1)
+    return (unpack(F, vals))
+end
+
+function _interpolate(::Val{3}, t, px, py, wx, wy)
+    g0x, g1x, h0x, h1x = wx
+    g0y, g1y, h0y, h1y = wy
+    
+    vals = g0y .* (g0x .* tex(t, px + h0x, py + h0y) .+
+                   g1x .* tex(t, px + h1x, py + h0y)) .+
+           g1y .* (g0x .* tex(t, px + h0x, py + h1y) .+
+                   g1x .* tex(t, px + h1x, py + h1y))
+    return (unpack(eltype(t), vals))
+end
+
+function _interpolate(::Val{3}, t, px, py, pz, wx, wy, wz)
+    g0x, g1x, h0x, h1x = wx
+    g0y, g1y, h0y, h1y = wy
+    g0z, g1z, h0z, h1z = wz
+
+    vals = g0z .* (g0y .* (g0x .* tex(t, px + h0x, py + h0y, pz + h0z) .+
+                           g1x .* tex(t, px + h1x, py + h0y, pz + h0z)) .+
+                   g1y .* (g0x .* tex(t, px + h0x, py + h1y, pz + h0z) .+
+                           g1x .* tex(t, px + h1x, py + h1y, pz + h0z))) .+
+           g1z .* (g0y .* (g0x .* tex(t, px + h0x, py + h0y, pz + h1z) .+
+                           g1x .* tex(t, px + h1x, py + h0y, pz + h1z)) .+
+                   g1y .* (g0x .* tex(t, px + h0x, py + h1y, pz + h1z) .+
+                           g1x .* tex(t, px + h1x, py + h1y, pz + h1z)))
+    return (unpack(eltype(t), vals))
+end
+
+function _weights(order::Val{1}, itp::Val{3}, a::Float32)
+    w0, w1, w2, w3 = __weights(order, itp, a)
+    g0 = w0 + w1
+    g1 = w2 + w3
+    h0 = w1 / g0 - 0.5f0
+    h1 = w3 / g1 + 1.5f0
+    return g0, g1, h0, h1
+end
+
+function __weights(::Val{1}, ::Val{3}, a::Float32)
+    w0 = 1.0f0/6.0f0 * (1.0f0 - a)^3
+    w1 = 2.0f0/3.0f0 - 0.5f0 * a^2 * (2.0f0 - a)
+    w2 = 2.0f0/3.0f0 - 0.5f0 * (1.0f0 - a)^2 * (1.0f0 + a)
+    w3 = 1.0f0/6.0f0 * a^3
+    return w0, w1, w2, w3
+end
+
+function __weights(::Val{2}, ::Val{3}, a::Float32)
+    w0 = 0.5f0 * a^2 + a - 0.5f0
+    w1 = 1.5f0 * a^2 - 2.0f0 * a
+    w2 = -1.5f0 * a^2 + a + 0.5f0
+    w3 = 0.5f0 * a^2
+    return w0, w1, w2, w3
+end
+
+function __weights(::Val{3}, ::Val{3}, a::Float32)
+    w0 = 1.0f0 - a
+    w1 = 3.0f0 - a - 2.0f0
+    w2 = -3.0f0 * a + 1.0f0
+    w3 = a
+    return w0, w1, w2, w3
+end
+
+function _weights(order::Val{1}, itp::Val{3}, a::Float64)
+    w0, w1, w2, w3 = __weights(order, itp, a)
+    g0 = w0 + w1
+    g1 = w2 + w3
+    h0 = w1 / g0 - 0.5
+    h1 = w3 / g1 + 1.5
+    return g0, g1, h0, h1
+end
+
+function __weights(::Val{1}, ::Val{3}, a::Float64)
+    w0 = 1/6 * (1 - a)^3
+    w1 = 2/3 - 0.5 * a^2 * (2 - a) 
+    w2 = 2/3 - 0.5 * (1 - a)^2 * (1 + a) 
+    w3 = 1/6 * a^3
+    return w0, w1, w2, w3
+end
+
+function __weights(::Val{2}, ::Val{3}, a::Float64)
+    w0 = 0.5 * a^2 + a - 0.5
+    w1 = 1.5 * a^2 - 2.0 * a
+    w2 = -1.5 * a^2 + a + 0.5
+    w3 = 0.5 * a^2
+    return w0, w1, w2, w3
+end
+
+function __weights(::Val{3}, ::Val{3}, a::Float64)
+    w0 = 1.0 - a
+    w1 = 3.0 - a - 2.0
+    w2 = -3.0 * a + 1.0
+    w3 = a
+    return w0, w1, w2, w3
+end

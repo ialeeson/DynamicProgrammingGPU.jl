@@ -1,0 +1,43 @@
+abstract type QuadratureType end
+
+struct Quadrature{N,F}
+    nodes::Vector{F}
+    weights::NTuple{N,Vector{F}}
+end
+
+Adapt.adapt_structure(to::Metal.MtlArrayAdaptor, q::Quadrature{N,F}) where {N,F} = Quadrature(Adapt.adapt(to, q.nodes), Adapt.adapt(to, q.weights))
+
+### Tauchen
+struct Tauchen <: QuadratureType
+    ρ
+    σ
+    m
+    n
+end
+function init(t::Tauchen)
+    
+    nodes = Vector{Float64}(undef, t.n)
+    weights = ntuple(i -> Vector{Float64}(undef, t.n), t.n)
+    x = -t.m * sqrt(t.σ * inv(1-t.ρ^2))
+    step = -2*x * inv(t.n - 1)
+    d = Normal(t.σ)
+    
+    for i in eachindex(nodes)
+        nodes[i] = x
+        x += step
+    end
+    
+    for j in 1:t.n
+        offset = step/2 - t.ρ * nodes[j]
+        π = cdf(d, nodes[1] + offset)
+        for i in 1:t.n-1
+            π = cdf(d, nodes[i] + offset) - π
+            weights[j][i] = π
+        end
+        weights[j][t.n] = 1 - π
+    end
+    
+    Quadrature(nodes, weights)
+    
+end
+

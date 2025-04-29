@@ -1,0 +1,143 @@
+@kernel function prefilter_1d_x(c)
+    thread = @index(Local)
+    group = @index(Group)
+    groupsize = @groupsize()[group]
+    stride = prod(@groupsize())
+    idx = thread + groupsize * (group-1)
+    Pole = sqrt(3)-2
+    λ = (1 - Pole) * (1 - inv(Pole))
+    sz = size(c)
+    prefilter!(c, sz[1], 1, 0)
+end
+
+@kernel function prefilter_2d_x(c)
+    thread = @index(Local)
+    group = @index(Group)
+    groupsize = @groupsize()[group]
+    stride = prod(@groupsize())
+    idx = thread + groupsize * (group-1)
+    Pole = sqrt(3)-2
+    λ = (1 - Pole) * (1 - inv(Pole))
+    sz = size(c)
+    for offset in idx-1:stride:sz[1]-1
+        prefilter!(c, sz[2], sz[2], offset)
+    end
+end
+
+@kernel function prefilter_2d_y(c)
+    thread = @index(Local)
+    group = @index(Group)
+    groupsize = @groupsize()[group]
+    stride = prod(@groupsize())
+    idx = thread + groupsize * (group-1)
+    Pole = sqrt(3*one(F))-2
+    λ = (1 - Pole) * (1 - inv(Pole))
+    sz = size(c)
+    for offset in idx-1:stride:sz[2]-1
+        prefilter!(c, sz[1], 1, offset*sz[1])
+    end
+end
+
+# @kernel function prefilter_3d_x(c)
+#     thread = @index(Local)
+#     group = @index(group)
+#     groupsize = @groupsize()[group]
+#     stride = prod(@groupsize())
+#     idx = thread + groupsize * (group-1)
+#     Pole = sqrt(3*one(F))-2
+#     λ = (1 - Pole) * (1 - inv(Pole))
+#     sz = size(c)
+#     for offset in idx-1:stride:sz[1]-1
+#         prefilter!(c, sz[2]*sz[3], sz[2]*sz[3], offset)
+#     end
+# end
+
+# @kernel function prefilter_3d_y(c)
+#     thread = @index(Local)
+#     group = @index(group)
+#     groupsize = @groupsize()[group]
+#     stride = prod(@groupsize())
+#     idx = thread + groupsize * (group-1)
+#     Pole = sqrt(3*one(F))-2
+#     λ = (1 - Pole) * (1 - inv(Pole))
+#     sz = size(c)
+#     for offset in idx-1:stride:sz[2]-1
+#         for zidx in 1:sz[3]
+#             prefilter!(c, sz[1], 1, offset*sz[1] + sz[2])
+#         end
+#     end
+# end
+
+# @kernel function prefilter_3d_z(c)
+#     thread = @index(Local)
+#     group = @index(group)
+#     groupsize = @groupsize()[group]
+#     stride = prod(@groupsize())
+#     idx = thread + groupsize * (group-1)
+#     Pole = sqrt(3*one(F))-2
+#     λ = (1 - Pole) * (1 - inv(Pole))
+#     sz = size(c)
+#     for offset in idx-1:stride:sz[2]-1
+#         prefilter!(c, sz[1]*sz[2], sz[1]*sz[2], offset*sz[1]*sz[2])
+#     end
+# end
+
+function InitialCausalCoefficient(c::Union{Vector{F},MtlDeviceArray{F}}, n, skip, offset) where {F}
+    Pole = sqrt(3*one(F))-2
+    (zn,s) = (Pole, c[1])
+    idx = 1+offset
+    for i in 1:n
+	s += zn * c[idx]
+	zn *= Pole
+        idx += skip
+    end
+    return s
+end
+
+function InitialAntiCausalCoefficient(c::Union{Vector{F},MtlDeviceArray{F,1}}) where {F}
+    
+end
+
+function prefilter!(coeffs::Array{F,1}) where {F}
+    prefilter!(coeffs, length(coeffs), 1, 0)
+end
+
+function prefilter!(coeffs::Union{Vector{F}, MtlVector{F}}) where {F}
+    sz, backend = (size(coeffs), get_backend(coeffs))
+    prefilter_1d_x(backend, 1)(coeffs, ndrange=1)
+    synchronize(backend)
+end
+
+function prefilter!(coeffs::Union{Array{F,2},MtlDeviceArray{F,2}}) where {F}
+    sz, backend = (size(coeffs), get_backend(coeffs))
+    prefilter_1d_x(backend)(coeffs, ndrange=sz[1])
+    synchronize(backend)
+    prefilter_2d_y(backend)(coeffs, ndrange=sz[2])
+    synchronize(backend)
+end
+
+
+function prefilter!(coeffs::Union{Vector{F},MtlDeviceArray{F}}, n, skip, offset) where {F}
+    Pole = sqrt(3*one(F))-2
+    λ = (1 - Pole) * (1 - inv(Pole))
+
+    ### Causal
+    c = λ * InitialCausalCoefficient(coeffs, n, skip, offset)
+    idx = 1+offset
+    coeffs[idx], c_prev = (c,c)
+    for i in 2:n
+        idx += skip
+        c = λ * coeffs[idx] + Pole * c_prev
+        coeffs[idx], c_prev = (c,c)
+    end
+
+    ### AntiCausal
+    c = Pole / (Pole - 1) * coeffs[n+offset]
+    idx = n+offset
+    coeffs[idx], c_prev = (c,c)
+    for i in n-1:-1:1
+        idx -= skip
+        c = Pole * (c_prev - coeffs[idx])
+        coeffs[idx], c_prev = (c,c)
+    end
+end

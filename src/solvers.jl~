@@ -1,0 +1,43 @@
+### UnivariateConstrainted
+struct UnivariateOptimizationProblem{F,B,S}
+    f::F
+    bounds::B
+    solver::S
+end
+
+function solve(problem::UnivariateOptimizationProblem, u0, bounds, args...)
+    lb, ub = problem.bounds(bounds, args...)
+    if ub < lb
+        lb, problem.f(lb, args...)
+    else
+        solve(problem.solver, problem.f, lb, ub, args)
+    end
+end
+
+### UnivariateNonlinear
+struct UnivariateNonlinearProblem
+    f
+    bounds
+    solver
+end
+
+function solve(problem::UnivariateNonlinearProblem, u0, extrema, args...)
+    bounds = problem.bounds(extrema, args...)
+    lb, ub = (bounds[2][1], bounds[1][1])
+    if problem.f(lb, args...) < 0.0
+        lb, 0.0
+    elseif problem.f(ub, args...) > 0.0
+        ub, 0.0
+    else
+        solve(problem.solver, problem.f, u0, args...)
+    end        
+end
+
+### NonlinearProblem
+struct NonlinearProblem
+    f
+    solver
+end
+
+solve(problem::NonlinearProblem, u0, extrema, args...) =
+    solve(problem.solver, problem.f, u0, args...)

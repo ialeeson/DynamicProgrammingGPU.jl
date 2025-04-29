@@ -1,0 +1,70 @@
+struct ValueFunction{P,O,M}
+    problem::P
+    order::O
+    markov::M
+end
+ValueFunction(p,o) = ValueFunction(p,o,missing)
+
+function init(problem::ValueFunction, grid::Grid{N,F}, v0) where {N,F}
+
+    n = grid.n
+    u = zeros(F,n)
+    v = reshape(
+        map(v0, Iterators.product(range.(grid.first, grid.last, grid.n)...)),
+        grid.n
+    )
+    itp = if problem.markov isa Missing
+        Interpolation(copy(v), problem.order, grid)
+    else
+        dim, int = problem.markov
+        MarkovCache(
+            LayeredInterpolation(
+                ntuple(n[dim]) do i
+                    copy(selectdim(v,dim,i))
+                end,
+                problem.order,
+                grid
+            ),
+            similar(v),
+            dim,
+            int()
+        )
+    end
+    copyto!(itp,v)
+    ValueFunctionCache(grid, problem, u, v, itp)
+            
+end
+
+struct ValueFunctionCache{G,A,I,P}
+    grid::G
+    problem::P
+    u::A
+    v::A
+    itp::I
+end
+
+function solve!(vf::ValueFunctionCache, p; nsteps=1)
+    
+    dev = get_backend(vf.v)
+    warp_sz = DynamicProgrammingGPU.warp_size(length(vf.grid.n))
+    
+    for step in 1:nsteps
+        if dev isa CPU
+            u_cpu(vf.problem.problem, vf.u, vf.v, vf.itp, vf.grid, p)
+        elseif dev isa MetalBackend && all(mod.(vf.grid.n, warp_sz) .== 0)
+            u_gpu_square(dev, min(1024, prod(vf.grid.n)))(vf.problem.problem,
+                vf.u, vf.v, vf.itp, vf.grid, p, warp_sz,
+                ndrange=min(1024, prod(vf.grid.n)))
+        elseif dev isa MetalBackend
+            u_gpu_linear(dev)(vf.problem.problem,
+                vf.u, vf.v, vf.itp, vf.grid, p, ndrange=vf.grid.n)
+        else
+            error("Unsupported backend.")
+        end            
+        KernelAbstractions.synchronize(dev)
+        copyto!(vf.itp, vf.v)
+        KernelAbstractions.synchronize(dev)
+    end
+    return vf.u
+    
+end
