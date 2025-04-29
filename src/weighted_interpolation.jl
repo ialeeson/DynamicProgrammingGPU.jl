@@ -5,7 +5,7 @@ struct WeightedInterpolation{M,N,F,O,A,B}
     grid::Grid{N,F}
 end
 
-function adapt_structure(to::CUDA.CuArrayKernelAdaptor,
+function Adapt.adapt_structure(to::CUDA.CuArrayKernelAdaptor,
     itp::WeightedInterpolation{M,N,F}) where {M,N,F}
     
     WeightedInterpolation(
@@ -16,9 +16,6 @@ function adapt_structure(to::CUDA.CuArrayKernelAdaptor,
         adapt(to, itp.grid)
     )
 end
-order_to_itp(::Val{0}) = CUDA.NearestNeighbour()
-order_to_itp(::Val{1}) = CUDA.LinearInterpolation()
-order_to_itp(::Val{3}) = CUDA.CubicInterpolation()
 
 function copyto!(w::WeightedInterpolation, v)
     for i in eachindex(w.itp)

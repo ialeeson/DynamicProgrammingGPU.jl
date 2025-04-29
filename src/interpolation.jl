@@ -9,14 +9,19 @@ fract(x) = x - floor(x)
     itp::A = zeros(eltype(grid.first), grid.n)
 end
 
-function adapt_structure(to::CUDA.CuArrayKernelAdaptor, itp::Interpolation)
+function Adapt.adapt_structure(to::CUDA.CuArrayKernelAdaptor,
+    itp::Interpolation{F,N}) where {F,N}
+    
     Interpolation(
         adapt(itp.order),
         adapt(to, itp.grid),
-        CuTexture(CUDA.CuTextureArray(itp.itp);
-            interpolation=CUDA.CubicInterpolation())
+        CuTexture(CuTextureArray{F,N}(itp.itp);
+            interpolation=order_to_itp(itp.order)),
     )
 end
+order_to_itp(::Val{0}) = CUDA.NearestNeighbour()
+order_to_itp(::Val{1}) = CUDA.LinearInterpolation()
+order_to_itp(::Val{3}) = CUDA.CubicInterpolation()
 
 (t::Interpolation{F,N,O})(x::Vararg{F,N}) where {F,N,O} =
     interpolate(
