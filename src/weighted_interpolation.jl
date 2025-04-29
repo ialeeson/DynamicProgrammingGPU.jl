@@ -6,16 +6,19 @@ struct WeightedInterpolation{M,N,F,O,A,B}
 end
 
 function adapt_structure(to::CUDA.CuArrayKernelAdaptor,
-    itp::WeightedInterpolation)
+    itp::WeightedInterpolation{M,N,F}) where {M,N,F}
     
     WeightedInterpolation(
-        CuTexture.(CUDA.CuTextureArray.(itp.itp);
-            interpolation=CUDA.CubicInterpolation()),
+        CuTexture.(CuTextureArray{F,N}.(itp.itp);
+            interpolation=order_to_itp(itp.order)),
         adapt(to, itp.quadrature),
         adapt(to, itp.order),
         adapt(to, itp.grid)
     )
 end
+order_to_itp(::Val{0}) = CUDA.NearestNeighbour()
+order_to_itp(::Val{1}) = CUDA.LinearInterpolation()
+order_to_itp(::Val{3}) = CUDA.CubicInterpolation()
 
 function copyto!(w::WeightedInterpolation, v)
     for i in eachindex(w.itp)
