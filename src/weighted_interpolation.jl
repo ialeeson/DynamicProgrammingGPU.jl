@@ -9,7 +9,7 @@ function Adapt.adapt_structure(to::CUDA.CuArrayKernelAdaptor,
     itp::WeightedInterpolation{M,N,F}) where {M,N,F}
     
     WeightedInterpolation(
-        CuTexture.(CuTextureArray{F,N}.(itp.itp);
+        CuTexture.(CuTextureArray{Float32,N}.(itp.itp);
             interpolation=order_to_itp(itp.order)),
         adapt(to, itp.quadrature),
         adapt(to, itp.order),
