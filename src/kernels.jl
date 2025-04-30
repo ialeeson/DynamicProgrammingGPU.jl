@@ -1,24 +1,9 @@
-@kernel function u_gpu_linear(itp, problem, u, v, @Const(grid), @Const(p))
+@kernel function u_gpu_linear(itp, problem, u, v, grid, @Const(p))
     
-    thread = @index(Local)
-    group = @index(Group)
-    group_sz = prod(@groupsize())
-    stride = group_sz * prod(@ndrange())
-    idx = thread + (group-1) * group_sz
-
-    bounds = (grid.first, grid.last)
-    x  = grid.first[1] + grid.step[1] * (idx-1)
-    xstep = grid.step[1] * stride
-    sz = grid.n
-        
-    for i in idx:stride:prod(sz)
-        
-        cidx = lidx_to_cidx(i, sz)
-        u0 = u[cidx...]
-        u[cidx...], v[cidx...] = solve(problem, u0, bounds, x, cidx, itp, p)
-        x += xstep
-        
-    end
+    cidx = Tuple(@index(Global, Cartesian))
+    x  = grid.first .+ grid.step .* (cidx .- 1)
+    u[cidx...], v[cidx...] = solve(problem, u[cidx...],
+        (grid.first, grid.last), x, cidx, itp, p)
     
 end
 

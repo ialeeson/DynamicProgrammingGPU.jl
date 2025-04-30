@@ -1,4 +1,4 @@
-CUDA.tex(A::Union{CuDeviceArray,MtlDeviceArray}, x...) = _tex(A, x...)
+CUDA.tex(A::Union{Array,CuDeviceArray,MtlDeviceArray}, x...) = _tex(A, x...)
 
 # @generated function _tex(A::T, y...) where {F,N,T<:AbstractArray{F,N}}
 #     quote
