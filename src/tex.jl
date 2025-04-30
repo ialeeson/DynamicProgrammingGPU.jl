@@ -1,15 +1,3 @@
-struct CuTextureKernelAdaptor end
-
-function Adapt.adapt_structure(to::CUDA.CuTextureKernelAdaptor, itp::Interpolation{F,N})
-    Interpolation(
-        itp.order,
-        Adapt.adapt_structure(to, itp.grid),
-        CuTexture(CuTextureArray{Float32,N}(itp.itp);
-            interpolation=order_to_itp(itp.order)),
-    )
-end
-
-
 CUDA.tex(A::Union{Array,MtlDeviceArray}, x...) = _tex(A, x...)
 
 # @generated function _tex(A::T, y...) where {F,N,T<:AbstractArray{F,N}}
