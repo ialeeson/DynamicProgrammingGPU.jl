@@ -1,6 +1,6 @@
 function copyto!(itp::Interpolation{F,N,3}, A) where {F,N}
     prefilter!(A)
-    copyto!(itp.itp, A)
+    copyto!(itp.itp.parent, A)
     itp.itp
 end
 

@@ -7,7 +7,7 @@ struct Grid{N,F}
         new{N,F}(first, last, n, (last .- first) ./ (n .- 1))
 end
 
-Adapt.adapt_structure(::CUDA.CuArrayKernelAdaptor, g::Grid{N,F}) where {N,F} =
+Adapt.adapt_structure(::Union{CUDA.CuArrayKernelAdaptor, Metal.MtlArrayAdaptor}, g::Grid{N,F}) where {N,F} =
     Grid(
         convert(NTuple{N,Float32}, g.first),
         convert(NTuple{N,Float32}, g.last),

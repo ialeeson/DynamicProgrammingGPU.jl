@@ -51,6 +51,8 @@ hessian(t::Interpolation{F,N,O}, x::Vararg{F,N}) where {F,N,O} =
 _to_indices(::Tuple{}, ::Tuple{}, ::Tuple{}) = ()
 _to_index(x0, s, t) = (t-x0)/s
 
+interpolate(order, A::CuDeviceTexture, x...) = A[x...]
+
 function interpolate(order, A, x)
 
     fx, px = (fract(x), floor(x))
