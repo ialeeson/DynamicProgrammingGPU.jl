@@ -1,8 +1,9 @@
-function copyto!(itp::Interpolation{F,N,3}, A) where {F,N}
+function Base.copyto!(itp::Interpolation{F,N,3}, A) where {F,N}
     prefilter!(A)
-    copyto!(itp.itp.parent, A)
+    copyto!(itp.itp, A)
     itp.itp
 end
+Base.copyto!(itp::CuTexture, A::AbstractArray) = copyto!(itp.parent, A)
 
 # @generated function _interpolate(::Val{3}, t::Union{MtlDeviceArray{F,N}, CuDeviceArray{F,N}, Array{F,N}}, px, wx) where {F,N}
 
@@ -22,7 +23,6 @@ end
 #     end
 #     return (unpack(F, vals))
 # end
-
 
 function _interpolate(::Val{3}, t::Union{MtlDeviceArray{F}, CuDeviceArray{F}, Array{F}}, px, wx) where {F}
     g0, g1, h0, h1 = wx
