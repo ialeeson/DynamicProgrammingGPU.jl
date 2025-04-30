@@ -1,6 +1,6 @@
 @kernel function u_gpu_linear(itp, problem, u, v, grid, @Const(p))
     
-    cidx = Tuple(@index(Global, Cartesian))
+    cidx = @index(Global, NTuple)
     x  = grid.first .+ grid.step .* (cidx .- 1)
     u[cidx...], v[cidx...] = solve(problem, u[cidx...],
         (grid.first, grid.last), x, cidx, itp, p)

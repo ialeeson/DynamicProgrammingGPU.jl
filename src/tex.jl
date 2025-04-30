@@ -21,9 +21,50 @@ CUDA.tex(A::Union{Array,CuDeviceArray,MtlDeviceArray}, x...) = _tex(A, x...)
 #     end
 # end
 
-
 function _tex(A::T, x::Float64) where {T<:AbstractArray{Float64}}
     x += 0.5
+    sz = size(A)
+    fx  = fract(x)
+    px = unsafe_trunc(Int64, floor(x))
+    if px < 1
+        A[begin]
+    elseif px ≥ sz[1]
+        A[end]
+    else
+        (one(x)-fx) * A[px] + fx * A[px+1]
+    end
+end
+
+function _tex(A::CuDeviceArray{Float32}, x::Float32)
+    #x += 0.5f0
+    sz = size(A)
+    fx  = fract(x)
+    px = unsafe_trunc(Int64, floor(x))
+    if px < 1
+        A[begin]
+    elseif px ≥ sz[1]
+        A[end]
+    else
+        (one(x)-fx) * A[px] + fx * A[px+1]
+    end
+end
+
+function _tex(A::MtlDeviceArray{Float32}, x::Float32)
+    x += 0.5f0
+    sz = size(A)
+    fx  = fract(x)
+    px = unsafe_trunc(Int64, floor(x))
+    if px < 1
+        A[begin]
+    elseif px ≥ sz[1]
+        A[end]
+    else
+        (one(x)-fx) * A[px] + fx * A[px+1]
+    end
+end
+
+
+function _tex(A::T, x::Float32) where {T<:CuDeviceArray{Float32}}
     sz = size(A)
     fx  = fract(x)
     px = unsafe_trunc(Int64, floor(x))
@@ -64,19 +105,19 @@ function _tex(A::T, x::Float64, y::Float64, z::Float64) where {T<:AbstractArray{
            ((one(x)-fx) * A[px,py+1,pz+1] + fx * A[px+1,py+1,pz+1]))
 end
 
-function _tex(A::T, x::Float32) where {T<:AbstractArray{Float32}}
-    x += 0.5f0
-    sz = size(A)
-    fx  = fract(x)
-    px = unsafe_trunc(Int64, floor(x))
-    if px < 1
-        A[begin]
-    elseif px ≥ sz[1]
-        A[end]
-    else
-        (one(x)-fx) * A[px] + fx * A[px+1]
-    end
-end
+# function _tex(A::T, x::Float32) where {T<:AbstractArray{Float32}}
+#     x += 0.5f0
+#     sz = size(A)
+#     fx  = fract(x)
+#     px = unsafe_trunc(Int64, floor(x))
+#     if px < 1
+#         A[begin]
+#     elseif px ≥ sz[1]
+#         A[end]
+#     else
+#         (one(x)-fx) * A[px] + fx * A[px+1]
+#     end
+# end
 
 function _tex(A::T, x::Float32, y::Float32) where {T<:AbstractArray{Float32}}
     sz = size(A)
