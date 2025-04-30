@@ -1,4 +1,4 @@
-@kernel function u_gpu_linear(problem, u, v, itp, @Const(grid), @Const(p))
+@kernel function u_gpu_linear(itp, problem, u, v, @Const(grid), @Const(p))
     
     thread = @index(Local)
     group = @index(Group)
@@ -22,7 +22,7 @@
     
 end
 
-@kernel function u_gpu_square(problem, u, v, itp, @Const(grid), @Const(p),
+@kernel function u_gpu_square(itp, problem, u, v, @Const(grid), @Const(p),
     @Const(warp_sz))
     
     thread = @index(Local)
@@ -43,13 +43,12 @@ end
         u0 = u[cidx...]
         u[cidx...], v[cidx...] = solve(problem, u0, bounds, x, cidx, itp, p)
         idx += stride
-        #x += grid.step[1] * stride
         
     end
     
 end
 
-@generated function u_cpu(problem::P, u::Array{F,N}, v::Array{F,N}, itp, grid::Grid{N,F}, p) where {P,F,N}
+@generated function u_cpu(itp, problem::P, u::Array{F,N}, v::Array{F,N}, grid::Grid{N,F}, p) where {P,F,N}
     
     quote
         bounds = (grid.first, grid.last)

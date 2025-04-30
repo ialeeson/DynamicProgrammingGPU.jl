@@ -69,24 +69,13 @@ function ValueFunctionCache(grid, problem, itp, v0)
 end
 
 function solve!(vf::ValueFunctionCache, p; nsteps=1)
-    
+
     dev = get_backend(vf.v)
     warp_sz = DynamicProgrammingGPU.warp_size(length(vf.grid.n))
     
     for step in 1:nsteps
-        if dev isa CPU
-            u_cpu(vf.problem.problem, vf.u, vf.v, vf.itp, vf.grid, p)
-        #elseif dev isa MetalBackend && all(mod.(vf.grid.n, warp_sz) .== 0)
-        else
-            u_gpu_square(dev, min(1024, prod(vf.grid.n)))(vf.problem.problem,
-                vf.u, vf.v, vf.itp, vf.grid, p, warp_sz,
-                ndrange=min(1024, prod(vf.grid.n)))
-        # elseif dev isa MetalBackend
-        #     u_gpu_linear(dev)(vf.problem.problem,
-        #         vf.u, vf.v, vf.itp, vf.grid, p, ndrange=vf.grid.n)
-        # else
-        #     error("Unsupported backend.")
-        end            
+        u!(dev, prod(vf.grid.n), warp_sz, vf.itp,
+            vf.problem.problem, vf.u, vf.v, vf.grid, p)
         KernelAbstractions.synchronize(dev)
         copyto!(vf.itp, vf.v)
         KernelAbstractions.synchronize(dev)
@@ -94,3 +83,28 @@ function solve!(vf::ValueFunctionCache, p; nsteps=1)
     return vf.u
     
 end
+
+u!(dev, sz, warp_sz, itp, args...) = u_cpu(itp, args...)
+
+u!(dev, sz, warp_sz, itp::Interpolation{F,N,O,A}, args...) where {F,N,O,A<:Union{CuArray,MtlArray}} =
+    u_gpu_square(dev, min(1024, sz))(itp, args..., warp_sz,
+        ndrange=min(1024, sz))
+
+u!(dev, sz, warp_sz, itp::Interpolation{F,N,O,A}, args...) where {F,N,O,A<:CuTexture} =
+    u_gpu_square(dev, min(1024, sz))(itp, args..., warp_sz,
+        ndrange=min(1024, sz))
+
+u!(dev, sz, warp_sz, itp::WeightedInterpolation{M,N,F,O,A}, args...) where {M,N,F,O,A<:Union{CuArray,MtlArray}} =
+    u_gpu_square(dev, min(1024, sz))(itp, args..., warp_sz,
+        ndrange=min(1024, sz))
+
+u!(dev, sz, warp_sz, itp::WeightedInterpolation{M,N,F,O,A}, args...) where {M,N,F,O,A<:CuTexture} =
+    u_gpu_square(dev, min(1024, sz))(itp, args..., warp_sz,
+        ndrange=min(1024, sz))
+
+u!(dev, sz, warp_sz, itp::LayeredInterpolation{M,N,F,O,A}, args...) where {M,N,F,O,A<:CuArray} =
+    u_gpu_linear(dev)(itp, args..., ndrange=sz)
+
+u!(dev, sz, warp_sz, itp::LayeredInterpolation{M,N,F,O,A}, args...) where {M,N,F,O,A<:CuTexture} =
+    u_gpu_square(dev, min(1024, sz))(itp, args..., warp_sz,
+        ndrange=min(1024, sz))
