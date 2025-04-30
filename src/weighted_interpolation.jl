@@ -17,9 +17,9 @@ function Adapt.adapt_structure(to::CUDA.CuArrayKernelAdaptor,
     )
 end
 
-function copyto!(w::WeightedInterpolation, v)
+function copyto!(w::WeightedInterpolation, v::AbstractArray{F,N}) where {F,N}
     for i in eachindex(w.itp)
-        copyto!(w.itp[i], selectdim(v, 1, i))
+        copyto!(w.itp[i], selectdim(v, N, i))
     end
 end
 

@@ -8,9 +8,9 @@ ValueFunction(p,o) = ValueFunction(p,o,missing)
 function init(p::ValueFunction{I}, grid, v0) where {I<:QuadratureType}
     int = init(p.integral)
     g = Grid(
-        (int.grid.first..., grid.first...),
-        (int.grid.last..., grid.last...),
-        (int.grid.n..., grid.n...)
+        (grid.first..., int.grid.first...),
+        (grid.last..., int.grid.last...),
+        (grid.n..., int.grid.n...)
     )
     itp = init(int, p.order, grid)
     ValueFunctionCache(g, p, itp, v0)
