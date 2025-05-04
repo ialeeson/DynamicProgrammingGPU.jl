@@ -14,6 +14,7 @@ include("linear_interpolation.jl")
 include("cubic_interpolation.jl")
 include("cubic_prefiltering.jl")
 include("quadrature.jl")
+include("markov.jl")
 include("weighted_interpolation.jl")
 include("layered_interpolation.jl")
 include("markov.jl")
@@ -27,9 +28,10 @@ include("kernels.jl")
 include("parameters.jl")
 
 Adapt.@adapt_structure ValueFunctionCache
+Adapt.@adapt_structure LayeredValueFunctionCache
 Adapt.@adapt_structure Interpolation
-Adapt.@adapt_structure WeightedInterpolation
-Adapt.@adapt_structure LayeredInterpolation
+Adapt.@adapt_structure InPlaceInterpolation
+Adapt.@adapt_structure PrecomputeInterpolation
 Adapt.@adapt_structure Quadrature
 
 export Grid, Interpolation

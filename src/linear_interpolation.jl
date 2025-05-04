@@ -1,5 +1,4 @@
-Base.copyto!(itp::Interpolation{F,N,1,A}, v::A) where {F,N,A} =
-    copyto!(itp.itp, v)
+Base.copyto!(itp::Interpolation{1}, v) = copyto!(itp.itp, v)
 
 _interpolate(::Val{1}, t::Array{T}, px, wx) where T = 
     unpack(T, tex(t, px + wx))

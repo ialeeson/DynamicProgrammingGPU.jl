@@ -1,4 +1,4 @@
-function Base.copyto!(itp::Interpolation{F,N,3}, A) where {F,N}
+function Base.copyto!(itp::Interpolation{3}, A)
     prefilter!(A)
     copyto!(itp.itp, A)
     itp.itp

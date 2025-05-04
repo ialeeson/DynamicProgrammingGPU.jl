@@ -3,45 +3,58 @@ import CUDA.tex
 import CUDA.unpack
 fract(x) = x - floor(x)
 
-@kwdef struct Interpolation{F,N,O,A}
+struct Interpolation{O,A}
     order::Val{O}
+    itp::A
+end
+Interpolation(sz, order) = Interpolation(order, zeros(sz))
+
+struct ScaledInterpolation{F,N,I}
+    itp::I
     grid::Grid{N,F}
-    itp::A = zeros(eltype(grid.first), grid.n)
 end
 
-# function Adapt.adapt_structure(to::CUDA.CuArrayKernelAdaptor,
-#     itp::Interpolation{F,N}) where {F,N}
-    
-#     Interpolation(
-#         itp.order,
-#         Adapt.adapt_structure(to, itp.grid),
-#         CuTexture(CuTextureArray{Float32,N}(itp.itp);
-#             interpolation=order_to_itp(itp.order)),
-#     )
-# end
+struct CuTextureKernelAdaptor end
+Adapt.adapt_storage(::CuTextureKernelAdaptor, x) = cu(x)
+cutex(x) = Adapt.adapt(CuTextureKernelAdaptor(), x)
+
+function Adapt.adapt_structure(to::CuTextureKernelAdaptor, itp::Interpolation)
+    Interpolation(
+        itp.order,
+        CuTexture(CuTextureArray{Float32,length(size(itp.itp))}(itp.itp);
+            interpolation=DynamicProgrammingGPU.order_to_itp(itp.order)),
+    )
+end
 order_to_itp(::Val{0}) = CUDA.NearestNeighbour()
 order_to_itp(::Val{1}) = CUDA.LinearInterpolation()
 order_to_itp(::Val{3}) = CUDA.CubicInterpolation()
 
-(t::Interpolation{F,N,O})(x::Vararg{F,N}) where {F,N,O} =
+(t::ScaledInterpolation)(x...) =
+    interpolate(t.itp, _to_indices(t.grid.first, t.grid.step, x)...)
+gradient(t::ScaledInterpolation, x...) =
+    gradient(t.itp, _to_indices(t.grid.first, t.grid.step, x)...)
+hessian(t::ScaledInterpolation, x...) =
+    hessian(t.itp, _to_indices(t.grid.step, t.grid.first, x)...)
+
+interpolate(t::Interpolation{O}, x::Vararg{F,N}) where {F,N,O} =
     interpolate(
         Val(O),
         t.itp,
-        _to_indices(t.grid.first, t.grid.step, x)...
+        x...
     )
 
-gradient(t::Interpolation{F,N,O}, x::Vararg{F,N}) where {F,N,O} =
+gradient(t::Interpolation{O}, x::Vararg{F,N}) where {F,N,O} =
     gradient(
         Val(O),
         t.itp,
-        _to_indices(t.grid.first, t.grid.step, x)...
+        x...
     )
 
-hessian(t::Interpolation{F,N,O}, x::Vararg{F,N}) where {F,N,O} =
+hessian(t::Interpolation{O}, x::Vararg{F,N}) where {F,N,O} =
     hessian(
         Val(O),
         t.itp,
-        _to_indices(t.grid.first, t.grid.step, x)...
+        x...
     )
 
 @inline _to_indices(x0, s, t) = (

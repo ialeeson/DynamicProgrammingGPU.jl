@@ -1,24 +1,18 @@
-# abstract type MarkovType end
+abstract type MarkovType end
 
-# struct Markov{N,F}
-#     f
-#     tmp
-#     dim
-#     weights
-# end
+struct Markov{N,F,A}
+    grid::Grid{1,F}
+    weights::NTuple{N,A}
+end
 
-# (q::MarkovCache)(x...) = q.f(x...)
-# gradient(q::MarkovCache, x...) = gradient(q.f, x...)
-# hessian(q::MarkovCache, x...) = hessian(q.f, x...)
-
-# function copyto!(q::MarkovCache, A)
-#     q.tmp .= q.weights * A
-#     copyto!(q.f, q.tmp)
-# end
-
-# ### Rowenhorst
-# struct Rowenhorst
-#     ρ
-#     σ
-#     n
-# end
+struct MarkovIdentity{I} <: MarkovType
+    n::I
+end
+function init(m::MarkovIdentity)
+    grid = Grid((1.0,), (float(m.n),), (m.n,))
+    weights = zeros(m.n,m.n)
+    for i in 1:n
+        weights[i,i] = 1.0
+    end
+    Markov(grid, weights)
+end

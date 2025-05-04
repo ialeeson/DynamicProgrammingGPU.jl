@@ -13,14 +13,14 @@ using DynamicProgrammingGPU
     max::F = 10.0
 end
 
-c(u,s,i,p) = exp(s[2])*s[1]^p.α + (one(s[1])-p.δ)*s[1] - u[1]
-f(u,s,i,v,p) = utility(c(u,s,i,p),p) + p.β * v(i[2],u[1])
-bounds(b,s,i,v,p) = (
-    1f-5,
-    exp(s[2])*s[1]^p.α + (one(s[1])-p.δ)*s[1] - 1f-5
+c(u,s,p) = exp(s[1])*s[2]^p.α + (one(s[2])-p.δ)*s[2] - u[1]
+f(u,s,v,p) = utility(c(u,s,p),p) + p.β * v(u[1])
+bounds(b,s,v,p) = (
+    zero(s[2]),
+    exp(s[1])*s[2]^p.α + (one(s[2])-p.δ)*s[2] - 1f-5
 )
-utility(c,p) = c^(1-p.γ)/(1-p.γ)
-v0(s,p) = utility(s[1],p)
+utility(c,p) = max(c^(1-p.γ)/(1-p.γ), -10f0)
+v0(s,p) = utility(s[2],p)
 
 function init(p, n; m=3)
     
