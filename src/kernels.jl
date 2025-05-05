@@ -1,68 +1,65 @@
 function axis_tensor_cpu(res, src, weights)
-    for cidx in CartesianIndices(src)
+    for cidx in CartesianIndices(res)
         idx = Tuple(cidx)
         s = 0.0
-        for join in eachindex(weights)
-            s += weights[j] * src[idx..., j]
+        for j in eachindex(weights)
+            s += weights[j] * src[idx[begin:end-1]..., j]
         end
         res[idx...] = s
     end
 end
 
-@kernel function axis_tensor_gpu(res, src, weights)
+@kernel function axis_tensor_gpu(res, @Const(src), @Const(weights))
     idx = @index(Global, NTuple)
     s = 0.0f0
     for j in eachindex(weights)
-        s += weights[j] * src[idx..., j]
+        s += weights[j] * src[idx[begin:end-1]..., j]
     end
     res[idx...] = s
 end
 
-function u_cpu(itp, problem, u, v, grid, p, xpad)
+function u_cpu(itp, problem, u, v, grid, p, ipad, xpad)
 
     sitp = ScaledInterpolation(itp, grid)
     for cidx in CartesianIndices(grid.n)
-        x  = grid.first .+ grid.step .* (Tuple(cidx) .- 1)
-        u[cidx], v[cidx] = solve(problem, u[cidx],
-            (grid.first, grid.last), (xpad..., x...), sitp, p)
+        idx = Tuple(cidx)
+        x  = grid.first .+ grid.step .* (idx .- 1)
+        u[idx..., ipad...], v[idx..., ipad...] = solve(problem, u[idx..., ipad...], (grid.first, grid.last), (x..., xpad...), sitp, p)
     end
     
 end
 
-function u_cpu(itp::Interpolation{O}, weights, problem, u, v, grid, p, xpad) where {O}
+function u_cpu(itp::Interpolation{O}, weights, problem, u, v, grid, p, ipad, xpad) where {O}
 
     sitp = ScaledInterpolation(
         InPlaceInterpolation(itp, weights),
         grid
     )
     for cidx in CartesianIndices(grid.n)
-        x  = grid.first .+ grid.step .* (Tuple(cidx) .- 1)
-        u[cidx], v[cidx] = solve(problem, u[cidx],
-            (grid.first, grid.last), (xpad..., x...), sitp, p)
+        idx = Tuple(cidx)
+        x  = grid.first .+ grid.step .* (idx .- 1)
+        u[idx..., ipad...], v[idx..., ipad...] = solve(problem, u[idx..., ipad...], (grid.first, grid.last), (x..., xpad...), sitp, p)
     end
-    
 end
 
-@kernel function u_gpu(itp, problem, u, v, @Const(grid), @Const(p), @Const(xpad))
+@kernel function u_gpu(itp, problem, u, v, @Const(grid), @Const(p), @Const(ipad), @Const(xpad))
     
-    cidx = @index(Global, NTuple)
+    idx = @index(Global, NTuple)
     sitp = ScaledInterpolation(itp, grid)
-    x  = grid.first .+ grid.step .* (cidx .- 1)
-    u[cidx...], v[cidx...] = solve(problem, u[cidx...],
-        (grid.first, grid.last), (xpad..., x...), sitp, p)
+    x  = grid.first .+ grid.step .* (idx .- 1)
+    u[idx..., ipad...], v[idx..., ipad...] = solve(problem, u[idx..., ipad...], (grid.first, grid.last), (x..., xpad...), sitp, p)
     
 end
 
-@kernel function u_gpu(itp, @Const(weights), problem, u, v, @Const(grid), @Const(p), @Const(xpad))
+@kernel function u_gpu(itp, @Const(weights), problem, u, v, @Const(grid), @Const(p), @Const(ipad), @Const(xpad))
     
-    cidx = @index(Global, NTuple)
+    idx = @index(Global, NTuple)
     sitp = ScaledInterpolation(
         InPlaceInterpolation(itp, weights),
         grid
     )
-    x  = grid.first .+ grid.step .* (cidx .- 1)
-    u[cidx...], v[cidx...] = solve(problem, u[cidx...],
-        (grid.first, grid.last), (xpad..., x...), sitp, p)
+    x  = grid.first .+ grid.step .* (idx .- 1)
+    u[idx..., ipad...], v[idx..., ipad...] = solve(problem, u[idx..., ipad...], (grid.first, grid.last), (x..., xpad...), sitp, p)
     
 end
 lidx_to_cidx(i, n) = _lidx_to_cidx(i, reverse(n))

@@ -16,20 +16,35 @@ init(m::Markov{N}, order, sz) where {N} =
 interpolate(t::PrecomputeInterpolation, x::Vararg{F,N}) where {F,N} =
     interpolate(t.itp, x...)
 
-function copyto!(w::PrecomputeInterpolation, v, i)
+function copyto!(itp::NTuple{N,PrecomputeInterpolation}, layers, v) where {N}
+    l, n = (length(layers), length(size(v)))
+    for i in 1:N
+        copyto!(itp[i], v)
+    end
+end
+function copyto!(w::PrecomputeInterpolation, v)
     dev = get_backend(w.tmp)
-    axis_tensor(dev, w.tmp, v, w.weights, i)
+    axis_tensor(dev, w.tmp, v, w.weights)
     synchronize(dev)
     copyto!(w.itp, w.tmp)
     synchronize(dev)
 end
-axis_tensor(dev::CPU, dest, src, weights) = axis_tensor_cpu(dest, src, weights)
+axis_tensor(dev::CPU, dest, src, weights) =
+    axis_tensor_cpu(dest, src, weights)
 axis_tensor(dev::Union{MetalBackend, CUDABackend}, dest, src, weights) =
     axis_tensor_gpu(dev)(dest, src, weights, ndrange=size(dest))
 
 struct InPlaceInterpolation{O,A,B}
     itp::Interpolation{O,A}
     weights::B
+end
+
+
+function copyto!(itp::NTuple{N,InPlaceInterpolation}, layers, v) where {N}
+    l, n = (length(layers), length(size(v)))
+    for (i,A) in enumerate(eachslice(v, dims=(n-l+1:n...,)))
+        copyto!(itp[i], A)
+    end
 end
 copyto!(w::InPlaceInterpolation, v) = copyto!(w.itp, v)
 

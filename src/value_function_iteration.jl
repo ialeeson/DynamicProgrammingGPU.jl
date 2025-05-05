@@ -7,21 +7,20 @@ ValueFunction(p,o) = ValueFunction(p,o,missing)
 
 function init(p::ValueFunction, grid, v0)
     int = init(p.integral)
-    v = ntuple(prod(int.grid.n)) do i
-        map(
+    v = map(
             v0,
             Iterators.product(
-                (int.grid.first .+ int.grid.step .* lidx_to_cidx(i, int.grid.n))...,
-                range.(grid.first, grid.last, grid.n)...)
-        )
-    end
-    u = similar.(v)
+                range.(grid.first, grid.last, grid.n)...,
+                range.(int.grid.first, int.grid.last, int.grid.n)...
+            )
+    )
+    u = similar(v)
     itp = init(int, p.order, grid.n)
-    copyto!.(itp, v)
+    copyto!(itp, int.grid.n, v)
     LayeredValueFunctionCache(int.grid, grid, p.problem, u, v, itp)
 end
 
-function init(p::ValueFunction{Missing,}, grid, v0)
+function init(p::ValueFunction{Missing}, grid, v0)
     v = reshape(
         map(
             v0,
@@ -47,15 +46,12 @@ struct LayeredValueFunctionCache{A,M,N,L,F,I,P}
     layers::Grid{L,F}
     grid::Grid{N,F}
     problem::P
-    u::NTuple{M,A}
-    v::NTuple{M,A}
+    u::A
+    v::A
     itp::NTuple{M,I}
 end
-function copy!(vf::LayeredValueFunctionCache)
-    for i in eachindex(vf.itp)
-        copyto!(vf.itp[i], vf.v, i)
-    end
-end
+copy!(vf::LayeredValueFunctionCache) =
+    copyto!(vf.itp, vf.layers.n, vf.v)
 
 function solve!(vf::Union{ValueFunctionCache, LayeredValueFunctionCache},
     p; nsteps=1)
@@ -70,17 +66,16 @@ end
 
 function u!(vf::ValueFunctionCache, p)
     dev = get_backend(vf.v)
-    _u!(dev, vf.grid.n,
-        vf.itp, vf.problem, vf.u, vf.v, vf.grid, p, ())
+    _u!(dev, vf.grid.n, vf.itp, vf.problem, vf.u, vf.v, vf.grid, p, (), ())
     synchronize(dev)
 end
 
 function u!(vf::LayeredValueFunctionCache, p)
-    dev = get_backend(first(vf.v))
+    dev = get_backend(vf.v)
     sz = vf.grid.n
     for (i,xpad) in enumerate(Base.product(range.(vf.layers.first, vf.layers.last, vf.layers.n)...))
-        _u!(dev, sz,
-            vf.itp[i], vf.problem, vf.u[i], vf.v[i], vf.grid, p, xpad)
+        ipad = lidx_to_cidx(i, vf.layers.n)
+        _u!(dev, sz, vf.itp[i], vf.problem, vf.u, vf.v, vf.grid, p, ipad, xpad)
     end
     synchronize(dev)
 end
@@ -90,7 +85,7 @@ _u!(dev::CPU, sz, itp, args...) =
 _u!(dev::CPU, sz, itp::InPlaceInterpolation, args...) =
     u_cpu(itp.itp, itp.weights, args...)
 
-_u!(dev::Union{MetalBackend}, sz, itp, args...) =
+_u!(dev::Union{MetalBackend,CUDABackend}, sz, itp, args...) =
     u_gpu(dev)(itp, args..., ndrange=sz)
-_u!(dev::Union{MetalBackend}, sz, itp::InPlaceInterpolation, args...) =
+_u!(dev::Union{MetalBackend,CUDABackend}, sz, itp::InPlaceInterpolation, args...) =
     u_gpu(dev)(itp.itp, itp.weights, args..., ndrange=sz)

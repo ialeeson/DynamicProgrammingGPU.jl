@@ -1,4 +1,4 @@
-module RBC
+module RBCPrecompute
 
 using DynamicProgrammingGPU
 
@@ -32,7 +32,7 @@ function init(p, n; m=3)
             GoldenSection(),
         ),
         Val(3),
-        Tauchen(p.ρ, p.σ, m, n[2])
+        MarkovIdentity(n[2])
     )
     DynamicProgrammingGPU.init(prob, grid, Base.Fix2(v0, p))
     

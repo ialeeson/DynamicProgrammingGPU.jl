@@ -64,18 +64,18 @@ function _tex(A::MtlDeviceArray{Float32}, x::Float32)
 end
 
 
-function _tex(A::T, x::Float32) where {T<:CuDeviceArray{Float32}}
-    sz = size(A)
-    fx  = fract(x)
-    px = unsafe_trunc(Int64, floor(x))
-    if px < 1
-        A[begin]
-    elseif px ≥ sz[1]
-        A[end]
-    else
-        (one(x)-fx) * A[px] + fx * A[px+1]
-    end
-end
+# function _tex(A::T, x::Float32) where {T<:CuDeviceArray{Float32}}
+#     sz = size(A)
+#     fx  = fract(x)
+#     px = unsafe_trunc(Int64, floor(x))
+#     if px < 1
+#         A[begin]
+#     elseif px ≥ sz[1]
+#         A[end]
+#     else
+#         (one(x)-fx) * A[px] + fx * A[px+1]
+#     end
+# end
 
 function _tex(A::T, x::Float64, y::Float64) where {T<:AbstractArray{Float64}}
     sz = size(A)
