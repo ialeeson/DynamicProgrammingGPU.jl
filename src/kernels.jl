@@ -6,6 +6,7 @@ function axis_tensor_cpu(res, src, weights)
             s += weights[j] * src[idx..., j]
         end
         res[idx...] = s
+    end
 end
 
 @kernel function axis_tensor_gpu(res, src, weights)
