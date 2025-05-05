@@ -1,14 +1,19 @@
 using CUDA, BenchmarkTools, DataFrames, Adapt, FileIO, Dates, CSV, Metal
 import CommonSolve.solve!, CommonSolve.init
 
-include("DynamicProgrammingGPU.jl")
-using .DynamicProgrammingGPU
-include("cake_eating_problem.jl")
-import .CakeEatingProblem as CP
-include("rbc.jl")
-import .RBC as RBC
-include("rbc_precompute.jl")
-import .RBCPrecompute
+# include("DynamicProgrammingGPU.jl")
+# using .DynamicProgrammingGPU
+# include("cake_eating_problem.jl")
+# import .CakeEatingProblem as CP
+# include("rbc.jl")
+# import .RBC as RBC
+# include("rbc_precompute.jl")
+# import .RBCPrecompute
+
+using DynamicProgrammingGPU
+import DynamicProgrammingExamples.CakeEatingProblem as CP
+import DynamicProgrammingExamples.RBC
+import DynamicProgrammingExamples.RBCPrecompute
 
 function push_time!(filename, t, date, name, n, nsteps)
     cpu = @belapsed(solve!(x, p),
