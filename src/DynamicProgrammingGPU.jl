@@ -37,7 +37,7 @@ Adapt.@adapt_structure Quadrature
 export Grid, Interpolation
 export ValueFunction, EulerEquation
 export GoldenSection
-export Tauchen, Quadrature
+export Tauchen, Quadrature, MarkovIdentity
 export UnivariateNonlinearProblem, UnivariateOptimizationProblem
 export NonlinearProblem
 export ModelParameters

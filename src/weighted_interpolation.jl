@@ -4,7 +4,7 @@ struct PrecomputeInterpolation{O,A,B,C}
     tmp::C
     order::Val{O}
 end
-init(m::Markov{N}, order, sz) where {N}=
+init(m::Markov{N}, order, sz) where {N} =
     ntuple(N) do i
         PrecomputeInterpolation(
             Interpolation(sz, order),
@@ -13,12 +13,19 @@ init(m::Markov{N}, order, sz) where {N}=
             order
         )
     end
+interpolate(t::PrecomputeInterpolation, x::Vararg{F,N}) where {F,N} =
+    interpolate(t.itp, x...)
 
-function copyto!(w::PrecomputeInterpolation, v)
-    axis_tensor_gpu(w.tmp, v, w.weights)
-    synchronize(get_backend(w.tmp))
+function copyto!(w::PrecomputeInterpolation, v, i)
+    dev = get_backend(w.tmp)
+    axis_tensor(dev, w.tmp, v, w.weights, i)
+    synchronize(dev)
     copyto!(w.itp, w.tmp)
+    synchronize(dev)
 end
+axis_tensor(dev::CPU, dest, src, weights) = axis_tensor_cpu(dest, src, weights)
+axis_tensor(dev::Union{MetalBackend, CUDABackend}, dest, src, weights) =
+    axis_tensor_gpu(dev)(dest, src, weights, ndrange=size(dest))
 
 struct InPlaceInterpolation{O,A,B}
     itp::Interpolation{O,A}

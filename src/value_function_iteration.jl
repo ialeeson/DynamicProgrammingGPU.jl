@@ -21,7 +21,7 @@ function init(p::ValueFunction, grid, v0)
     LayeredValueFunctionCache(int.grid, grid, p.problem, u, v, itp)
 end
 
-function init(p::ValueFunction{Missing}, grid, v0)
+function init(p::ValueFunction{Missing,}, grid, v0)
     v = reshape(
         map(
             v0,
@@ -52,8 +52,8 @@ struct LayeredValueFunctionCache{A,M,N,L,F,I,P}
     itp::NTuple{M,I}
 end
 function copy!(vf::LayeredValueFunctionCache)
-    for i in 1:prod(vf.layers.n)
-        copyto!(vf.itp[i], vf.v[i])
+    for i in eachindex(vf.itp)
+        copyto!(vf.itp[i], vf.v, i)
     end
 end
 

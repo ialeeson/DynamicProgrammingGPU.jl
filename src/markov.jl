@@ -10,9 +10,9 @@ struct MarkovIdentity{I} <: MarkovType
 end
 function init(m::MarkovIdentity)
     grid = Grid((1.0,), (float(m.n),), (m.n,))
-    weights = zeros(m.n,m.n)
-    for i in 1:n
-        weights[i,i] = 1.0
+    weights = ntuple(i->rand(m.n), m.n)
+    for i in 1:m.n
+        weights[i] ./= sum(weights[i])
     end
     Markov(grid, weights)
 end

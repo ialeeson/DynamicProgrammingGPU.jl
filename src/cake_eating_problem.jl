@@ -11,7 +11,7 @@ end
 
 utility(c,p) = c^(1-p.γ)/(1-p.γ)
 f(u,s,v,p) = utility(s[1]-u[1], p) + p.β * v(u[1])
-bounds(b,s,v,p) = (zero(s[1]), s[1]-1e-5)
+bounds(b,s,v,p) = (zero(s[1]), s[1])
 v0(s,p) = utility(s[1],p)
 
 function init(p, n)

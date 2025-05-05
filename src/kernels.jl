@@ -1,19 +1,18 @@
-@kernel function axis_tensor_cpu(res, src, weights)
+function axis_tensor_cpu(res, src, weights)
     for cidx in CartesianIndices(src)
         idx = Tuple(cidx)
         s = 0.0
-        for j in eachindex(weights)
-            s += weights[j] * src[j, idx[2:end]...]
+        for join in eachindex(weights)
+            s += weights[j] * src[idx..., j]
         end
         res[idx...] = s
-    end
 end
 
 @kernel function axis_tensor_gpu(res, src, weights)
     idx = @index(Global, NTuple)
     s = 0.0f0
     for j in eachindex(weights)
-        s += weights[j] * src[j, idx[2:end]...]
+        s += weights[j] * src[idx..., j]
     end
     res[idx...] = s
 end
