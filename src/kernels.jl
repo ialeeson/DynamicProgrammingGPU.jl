@@ -3,7 +3,7 @@ function axis_tensor_cpu(res, src, weights)
         idx = Tuple(cidx)
         s = 0.0
         for j in eachindex(weights)
-            s += weights[j] * src[idx[begin:end-1]..., j]
+            s += weights[j] * src[idx..., j]
         end
         res[idx...] = s
     end
@@ -13,7 +13,7 @@ end
     idx = @index(Global, NTuple)
     s = 0.0f0
     for j in eachindex(weights)
-        s += weights[j] * src[idx[begin:end-1]..., j]
+        s += weights[j] * src[idx..., j]
     end
     res[idx...] = s
 end

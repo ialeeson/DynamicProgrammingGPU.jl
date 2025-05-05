@@ -19,7 +19,7 @@ bounds(b,s,v,p) = (
     zero(s[2]),
     exp(s[1])*s[2]^p.α + (one(s[2])-p.δ)*s[2] - 1f-5
 )
-utility(c,p) = max(c^(1-p.γ)/(1-p.γ), -10f0)
+utility(c,p) = c^(1-p.γ)/(1-p.γ)
 v0(s,p) = utility(s[2],p)
 
 function init(p, n; m=3)
