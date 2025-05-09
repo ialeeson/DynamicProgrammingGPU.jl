@@ -35,8 +35,8 @@ convert_order(::Val{3}) = CUDA.CubicInterpolation()
 struct Mirror end
 struct Clamp end
 
-convert_bc(::Clamp) = CUDA.Cuaddress_mode_enum(1)
-convert_bc(::Mirror) = CUDA.Cuaddress_mode_enum(2)
+convert_bc(::Clamp) = CUDA.CUaddress_mode_enum(1)
+convert_bc(::Mirror) = CUDA.CUaddress_mode_enum(2)
 
 (t::ScaledInterpolation)(x...) =
     interpolate(t.itp, _to_indices(t.grid.first, t.grid.step, x)...)
