@@ -26,7 +26,7 @@ end
 TransmittedAntiCausalCoefficient(α, ::Clamp, c) = zero(α)
 
 InitialAntiCausalCoefficient(α, ::Mirror, s) = zero(α)
-TransmittedAntiCausalCoefficient(α, ::Mirror, c) = α * c[end-1]
+TransmittedAntiCausalCoefficient(α, ::Mirror, c) = α * c[end]
 
 prefilter!(bc, coeffs::AbstractArray{F}) where {F} = _prefilter!(bc, coeffs)
 function _prefilter!(bc, coeffs::AbstractArray{F}) where {F}
