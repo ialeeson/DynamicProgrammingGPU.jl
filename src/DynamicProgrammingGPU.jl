@@ -1,5 +1,6 @@
 module DynamicProgrammingGPU
 
+using Interpolations
 using KernelAbstractions, StaticArrays, Adapt
 using Distributions
 using Metal, CUDA
@@ -33,7 +34,8 @@ Adapt.@adapt_structure InPlaceInterpolation
 Adapt.@adapt_structure PrecomputeInterpolation
 Adapt.@adapt_structure Quadrature
 
-export Grid, Interpolation
+export Grid, Interpolation, ScaledInterpolation
+export Mirror, Clamp
 export ValueFunction, EulerEquation
 export GoldenSection
 export Tauchen, Quadrature, MarkovIdentity

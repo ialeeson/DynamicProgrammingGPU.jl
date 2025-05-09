@@ -34,11 +34,11 @@ axis_tensor(dev::CPU, dest, src, weights) =
 axis_tensor(dev::Union{MetalBackend, CUDABackend}, dest, src, weights) =
     axis_tensor_gpu(dev)(dest, src, weights, ndrange=size(dest))
 
-struct InPlaceInterpolation{O,A,B}
+struct InPlaceInterpolation{O,A,B,C}
     itp::Interpolation{O,A}
     weights::B
+    tmp::C
 end
-
 
 function copyto!(itp::NTuple{N,InPlaceInterpolation}, layers, v) where {N}
     l, n = (length(layers), length(size(v)))
@@ -46,13 +46,17 @@ function copyto!(itp::NTuple{N,InPlaceInterpolation}, layers, v) where {N}
         copyto!(itp[i], A)
     end
 end
-copyto!(w::InPlaceInterpolation, v) = copyto!(w.itp, v)
+function copyto!(w::InPlaceInterpolation, v)
+    copyto!(w.tmp, v)
+    copyto!(w.itp, w.tmp)
+end
 
 init(quad::Quadrature{N}, order, sz) where {N} =
     ntuple(N) do i
         InPlaceInterpolation(
             Interpolation(sz, order),
-            quad.weights[i]
+            quad.weights[i],
+            zeros(sz...)
         )
     end
 

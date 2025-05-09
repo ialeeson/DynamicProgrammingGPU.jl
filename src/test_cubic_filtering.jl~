@@ -1,0 +1,18 @@
+using Interpolations
+#include("DynamicProgrammingGPU.jl")
+using DynamicProgrammingGPU
+function test(A; m=10)
+    n = size(A)
+    g = Grid(ntuple(i->float(1), length(n)), float.(n), n)
+    g1 = Grid(g.first, g.last, g.n .* m)
+    #A = rand(n...)
+    itp0 = Interpolation(Val(3), Mirror(), zeros(n...))
+    sitp = DynamicProgrammingGPU.ScaledInterpolation(itp0, g)
+    copyto!(itp0, copy(A))
+    itp = extrapolate(scale(interpolate(copy(A), BSpline(Cubic(Reflect(OnGrid())))), range.(g.first, g.last, g.n)), Throw())
+    s = 0.0
+    sum(abs2(sitp(x...)- A[i])
+        for (i,x) in enumerate(Base.product(range.(g.first, g.last, g.n)...)))
+    [(sitp(x...), itp(x...))
+    for (i,x) in enumerate(Base.product(range.(g1.first, g1.last, g1.n)...))]
+end

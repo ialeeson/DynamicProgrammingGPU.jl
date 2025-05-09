@@ -1,5 +1,5 @@
 function Base.copyto!(itp::Interpolation{3}, A)
-    prefilter!(A)
+    prefilter!(itp.bc, A)
     copyto!(itp.itp, A)
     itp.itp
 end
@@ -24,36 +24,36 @@ Base.copyto!(itp::CuTexture, A::AbstractArray) = copyto!(itp.parent, A)
 #     return (unpack(F, vals))
 # end
 
-function _interpolate(::Val{3}, t::Union{MtlDeviceArray{F}, CuDeviceArray{F}, Array{F}}, px, wx) where {F}
+function _interpolate(::Val{3}, bc, t::Union{MtlDeviceArray{F}, CuDeviceArray{F}, Array{F}}, px, wx) where {F}
     g0, g1, h0, h1 = wx
-    vals = g0 .* tex(t, px + h0) .+ g1 .* tex(t, px + h1)
+    vals = g0 .* tex(bc, t, px + h0) .+ g1 .* tex(bc, t, px + h1)
     return (unpack(F, vals))
 end
 
-function _interpolate(::Val{3}, t, px, py, wx, wy)
+function _interpolate(::Val{3}, bc, t, px, py, wx, wy)
     g0x, g1x, h0x, h1x = wx
     g0y, g1y, h0y, h1y = wy
     
-    vals = g0y .* (g0x .* tex(t, px + h0x, py + h0y) .+
-                   g1x .* tex(t, px + h1x, py + h0y)) .+
-           g1y .* (g0x .* tex(t, px + h0x, py + h1y) .+
-                   g1x .* tex(t, px + h1x, py + h1y))
+    vals = g0y .* (g0x .* tex(bc, t, px + h0x, py + h0y) .+
+                   g1x .* tex(bc, t, px + h1x, py + h0y)) .+
+           g1y .* (g0x .* tex(bc, t, px + h0x, py + h1y) .+
+                   g1x .* tex(bc, t, px + h1x, py + h1y))
     return (unpack(eltype(t), vals))
 end
 
-function _interpolate(::Val{3}, t, px, py, pz, wx, wy, wz)
+function _interpolate(::Val{3}, bc, t, px, py, pz, wx, wy, wz)
     g0x, g1x, h0x, h1x = wx
     g0y, g1y, h0y, h1y = wy
     g0z, g1z, h0z, h1z = wz
 
-    vals = g0z .* (g0y .* (g0x .* tex(t, px + h0x, py + h0y, pz + h0z) .+
-                           g1x .* tex(t, px + h1x, py + h0y, pz + h0z)) .+
-                   g1y .* (g0x .* tex(t, px + h0x, py + h1y, pz + h0z) .+
-                           g1x .* tex(t, px + h1x, py + h1y, pz + h0z))) .+
-           g1z .* (g0y .* (g0x .* tex(t, px + h0x, py + h0y, pz + h1z) .+
-                           g1x .* tex(t, px + h1x, py + h0y, pz + h1z)) .+
-                   g1y .* (g0x .* tex(t, px + h0x, py + h1y, pz + h1z) .+
-                           g1x .* tex(t, px + h1x, py + h1y, pz + h1z)))
+    vals = g0z .* (g0y .* (g0x .* tex(bc, t, px + h0x, py + h0y, pz + h0z) .+
+                           g1x .* tex(bc, t, px + h1x, py + h0y, pz + h0z)) .+
+                   g1y .* (g0x .* tex(bc, t, px + h0x, py + h1y, pz + h0z) .+
+                           g1x .* tex(bc, t, px + h1x, py + h1y, pz + h0z))) .+
+           g1z .* (g0y .* (g0x .* tex(bc, t, px + h0x, py + h0y, pz + h1z) .+
+                           g1x .* tex(bc, t, px + h1x, py + h0y, pz + h1z)) .+
+                   g1y .* (g0x .* tex(bc, t, px + h0x, py + h1y, pz + h1z) .+
+                           g1x .* tex(bc, t, px + h1x, py + h1y, pz + h1z)))
     return (unpack(eltype(t), vals))
 end
 

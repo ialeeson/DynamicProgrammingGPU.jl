@@ -82,10 +82,5 @@ end
 
 _u!(dev::CPU, sz, itp, args...) =
     u_cpu(itp, args...)
-_u!(dev::CPU, sz, itp::InPlaceInterpolation, args...) =
-    u_cpu(itp.itp, itp.weights, args...)
-
 _u!(dev::Union{MetalBackend,CUDABackend}, sz, itp, args...) =
     u_gpu(dev)(itp, args..., ndrange=sz)
-_u!(dev::Union{MetalBackend,CUDABackend}, sz, itp::InPlaceInterpolation, args...) =
-    u_gpu(dev)(itp.itp, itp.weights, args..., ndrange=sz)

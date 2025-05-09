@@ -29,19 +29,6 @@ function u_cpu(itp, problem, u, v, grid, p, ipad, xpad)
     
 end
 
-function u_cpu(itp::Interpolation{O}, weights, problem, u, v, grid, p, ipad, xpad) where {O}
-
-    sitp = ScaledInterpolation(
-        InPlaceInterpolation(itp, weights),
-        grid
-    )
-    for cidx in CartesianIndices(grid.n)
-        idx = Tuple(cidx)
-        x  = grid.first .+ grid.step .* (idx .- 1)
-        u[idx..., ipad...], v[idx..., ipad...] = solve(problem, u[idx..., ipad...], (grid.first, grid.last), (x..., xpad...), sitp, p)
-    end
-end
-
 @kernel function u_gpu(itp, problem, u, v, @Const(grid), @Const(p), @Const(ipad), @Const(xpad))
     
     idx = @index(Global, NTuple)
@@ -51,17 +38,6 @@ end
     
 end
 
-@kernel function u_gpu(itp, @Const(weights), problem, u, v, @Const(grid), @Const(p), @Const(ipad), @Const(xpad))
-    
-    idx = @index(Global, NTuple)
-    sitp = ScaledInterpolation(
-        InPlaceInterpolation(itp, weights),
-        grid
-    )
-    x  = grid.first .+ grid.step .* (idx .- 1)
-    u[idx..., ipad...], v[idx..., ipad...] = solve(problem, u[idx..., ipad...], (grid.first, grid.last), (x..., xpad...), sitp, p)
-    
-end
 lidx_to_cidx(i, n) = _lidx_to_cidx(i, reverse(n))
 function _lidx_to_cidx(i, n)
     n0, n1 = (first(n), Base.tail(n))

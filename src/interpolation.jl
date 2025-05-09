@@ -3,11 +3,12 @@ import CUDA.tex
 import CUDA.unpack
 fract(x) = x - floor(x)
 
-struct Interpolation{O,A}
+struct Interpolation{O,B,A}
     order::Val{O}
+    bc::B
     itp::A
 end
-Interpolation(sz, order) = Interpolation(order, zeros(sz))
+Interpolation(sz, order) = Interpolation(order, Mirror(), zeros(sz))
 
 struct ScaledInterpolation{F,N,I}
     itp::I
@@ -22,12 +23,20 @@ function Adapt.adapt_structure(to::CuTextureKernelAdaptor, itp::Interpolation)
     Interpolation(
         itp.order,
         CuTexture(CuTextureArray{Float32,length(size(itp.itp))}(itp.itp);
-            interpolation=DynamicProgrammingGPU.order_to_itp(itp.order)),
+            interpolation=DynamicProgrammingGPU.convert_order(itp.order),
+            addressing_mode=convert_bc(itp.bc)
+        ),
     )
 end
-order_to_itp(::Val{0}) = CUDA.NearestNeighbour()
-order_to_itp(::Val{1}) = CUDA.LinearInterpolation()
-order_to_itp(::Val{3}) = CUDA.CubicInterpolation()
+convert_order(::Val{0}) = CUDA.NearestNeighbour()
+convert_order(::Val{1}) = CUDA.LinearInterpolation()
+convert_order(::Val{3}) = CUDA.CubicInterpolation()
+
+struct Mirror end
+struct Clamp end
+
+convert_bc(::Clamp) = CUDA.Cuaddress_mode_enum(1)
+convert_bc(::Mirror) = CUDA.Cuaddress_mode_enum(2)
 
 (t::ScaledInterpolation)(x...) =
     interpolate(t.itp, _to_indices(t.grid.first, t.grid.step, x)...)
@@ -36,23 +45,26 @@ gradient(t::ScaledInterpolation, x...) =
 hessian(t::ScaledInterpolation, x...) =
     hessian(t.itp, _to_indices(t.grid.step, t.grid.first, x)...)
 
-interpolate(t::Interpolation{O}, x::Vararg{F,N}) where {F,N,O} =
+interpolate(t::Interpolation, x::Vararg{F,N}) where {F,N} =
     interpolate(
-        Val(O),
+        t.order,
+        t.bc,
         t.itp,
         x...
     )
 
-gradient(t::Interpolation{O}, x::Vararg{F,N}) where {F,N,O} =
+gradient(t::Interpolation, x::Vararg{F,N}) where {F,N} =
     gradient(
-        Val(O),
+        t.order,
+        t.bc,
         t.itp,
         x...
     )
 
-hessian(t::Interpolation{O}, x::Vararg{F,N}) where {F,N,O} =
+hessian(t::Interpolation, x::Vararg{F,N}) where {F,N} =
     hessian(
-        Val(O),
+        t.order,
+        t.bc,
         t.itp,
         x...
     )
@@ -64,27 +76,28 @@ hessian(t::Interpolation{O}, x::Vararg{F,N}) where {F,N,O} =
 _to_indices(::Tuple{}, ::Tuple{}, ::Tuple{}) = ()
 _to_index(x0, s, t) = (t-x0)/s
 
-interpolate(order, A::CuDeviceTexture, x...) = A[x...]
+interpolate(order, bc, A::CuDeviceTexture, x...) = A[x...]
 
-function interpolate(order, A, x)
+function interpolate(order, bc, A, x)
 
+    #x -= 0.5
     fx, px = (fract(x), floor(x))
     wx = _weights(Val(1), order, fx)
-    _interpolate(order, A, px, wx)
+    _interpolate(order, bc, A, px, wx)
     
 end
 
-function interpolate(order, A, x, y)
+function interpolate(order, bc, A, x, y)
 
     fx, px = (fract(x), floor(x))
     fy, py = (fract(y), floor(y))
     wx = _weights(Val(1), order, fx)
     wy = _weights(Val(1), order, fy)
-    _interpolate(order, A, px, py, wx, wy)
+    _interpolate(order, bc, A, px, py, wx, wy)
     
 end
 
-function interpolate(order, A, x, y, z)
+function interpolate(order, bc, A, x, y, z)
 
     fx, px = modf(x)
     fy, py = modf(y)
@@ -92,19 +105,19 @@ function interpolate(order, A, x, y, z)
     wx = _weights(Val(1), order, fx)
     wy = _weights(Val(1), order, fy)
     wz = _weights(Val(1), order, fz)
-    _interpolate(order, A, px, py, pz, wx, wy, wz)
+    _interpolate(order, bc, A, px, py, pz, wx, wy, wz)
     
 end
 
-function gradient(order, A, x)
+function gradient(order, bc, A, x)
 
     fx, px = modf(x)
     wx = _weights(Val(2), order, fx)
-    _interpolate(order, A, px, wx)
+    _interpolate(order, bc, A, px, wx)
     
 end
 
-function gradient(order, A, x, y)
+function gradient(order, bc, A, x, y)
     
     fx, px = modf(x)
     fy, py = modf(y)
@@ -114,13 +127,13 @@ function gradient(order, A, x, y)
     ∂wy = _weights(Val(2), order, fy)
     
     SA[
-        _interpolate(order, A, px, py, ∂wx, wy),
-        _interpolate(order, A, px, py, wx, ∂wy)
+        _interpolate(order, bc, A, px, py, ∂wx, wy),
+        _interpolate(order, bc, A, px, py, wx, ∂wy)
     ]
     
 end
 
-function gradient(order, A, x, y, z)
+function gradient(order, bc, A, x, y, z)
 
     fx, px = modf(x)
     fy, py = modf(y)
@@ -133,23 +146,23 @@ function gradient(order, A, x, y, z)
     ∂wz = _weights(Val(2), order, fz)
 
     SA[
-        _interpolate(order, A, px, py, ∂wx, wy, wz),
-        _interpolate(order, A, px, py, wx, ∂wy, wz),
-        _interpolate(order, A, px, py, wx, wy, ∂wz)
+        _interpolate(order, bc, A, px, py, ∂wx, wy, wz),
+        _interpolate(order, bc, A, px, py, wx, ∂wy, wz),
+        _interpolate(order, bc, A, px, py, wx, wy, ∂wz)
     ]
     
 end
 
 
-function hessian(order, A, x)
+function hessian(order, bc, A, x)
 
     fx, px = modf(x)
     wx = _weights(Val(2), order, fx)
-    _interpolate(order, A, px, wx)
+    _interpolate(order, bc, A, px, wx)
     
 end
 
-function hessian(order, A, x, y)
+function hessian(order, bc, A, x, y)
 
     fx, px = modf(x)
     fy, py = modf(y)
@@ -160,18 +173,18 @@ function hessian(order, A, x, y)
     ∂²wx = _weights(Val(3), order, fx)
     ∂²wy = _weights(Val(3), order, fy)
 
-    ∂fxy = _interpolate(order, A, px, py, ∂wx, ∂wy)
+    ∂fxy = _interpolate(order, bc, A, px, py, ∂wx, ∂wy)
     
     SA[
-        _interpolate(order, A, px, py, ∂²wx, wy)
+        _interpolate(order, bc, A, px, py, ∂²wx, wy)
         ∂fxy;
         ∂fxy
-        _interpolate(order, A, px, py, wx, ∂²wy)
+        _interpolate(order, bc, A, px, py, wx, ∂²wy)
     ]
     
 end
 
-function hessian(order, A, x, y, z)
+function hessian(order, bc, A, x, y, z)
 
     fx, px = modf(x)
     fy, py = modf(y)
@@ -186,20 +199,20 @@ function hessian(order, A, x, y, z)
     ∂²wy = _weights(Val(3), order, fy)
     ∂²wz = _weights(Val(3), order, fz)
     
-    ∂fxy = _interpolate(order, A, px, py, ∂wx, ∂wy, wz)
-    ∂fxz = _interpolate(order, A, px, py, ∂wx, wy, ∂wz)
-    ∂fyz = _interpolate(order, A, px, py, wx, ∂wy, ∂wz)
+    ∂fxy = _interpolate(order, bc, A, px, py, ∂wx, ∂wy, wz)
+    ∂fxz = _interpolate(order, bc, A, px, py, ∂wx, wy, ∂wz)
+    ∂fyz = _interpolate(order, bc, A, px, py, wx, ∂wy, ∂wz)
     
     SA[
-        _interpolate(order, A, px, py, pz, ∂²wx, wy, wz)
+        _interpolate(order, bc, A, px, py, pz, ∂²wx, wy, wz)
         ∂fxy
         ∂fxz;
         ∂fxy
-        _interpolate(order, A, px, py, pz, wx, ∂²wy, wz)
+        _interpolate(order, bc, A, px, py, pz, wx, ∂²wy, wz)
         ∂fyz;
         ∂fxz
         ∂fyz
-        _interpolate(order, A, px, py, pz, wx, wy, ∂²wz)
+        _interpolate(order, bc, A, px, py, pz, wx, wy, ∂²wz)
     ]
     
 end
