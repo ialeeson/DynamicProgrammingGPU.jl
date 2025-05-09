@@ -43,7 +43,7 @@ function _prefilter!(bc, coeffs::AbstractArray{F}) where {F}
 
     ### AntiCausal
     c_trans = TransmittedAntiCausalCoefficient(α, bc, coeffs)
-    λ = factorial(3)
+    λ = 3 * 2 * 1
     c = α * inv(α^2 - 1) * (c + c_anti + c_trans)
     coeffs[end], c_prev = (λ * c,c)
     for i in length(coeffs)-1:-1:1
