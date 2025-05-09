@@ -22,9 +22,10 @@ cutex(x) = Adapt.adapt(CuTextureKernelAdaptor(), x)
 function Adapt.adapt_structure(to::CuTextureKernelAdaptor, itp::Interpolation)
     Interpolation(
         itp.order,
+        Mirror(),
         CuTexture(CuTextureArray{Float32,length(size(itp.itp))}(itp.itp);
             interpolation=DynamicProgrammingGPU.convert_order(itp.order),
-            addressing_mode=convert_bc(itp.bc)
+            address_mode=convert_bc(itp.bc)
         ),
     )
 end

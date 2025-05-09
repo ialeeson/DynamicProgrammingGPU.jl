@@ -8,11 +8,11 @@ ValueFunction(p,o) = ValueFunction(p,o,missing)
 function init(p::ValueFunction, grid, v0)
     int = init(p.integral)
     v = map(
-            v0,
-            Iterators.product(
-                range.(grid.first, grid.last, grid.n)...,
-                range.(int.grid.first, int.grid.last, int.grid.n)...
-            )
+        v0,
+        Iterators.product(
+            range.(grid.first, grid.last, grid.n)...,
+            range.(int.grid.first, int.grid.last, int.grid.n)...
+        )
     )
     u = similar(v)
     itp = init(int, p.order, grid.n)
@@ -59,6 +59,10 @@ function solve!(vf::Union{ValueFunctionCache, LayeredValueFunctionCache},
     for step in 1:nsteps
         u!(vf, p)
         copy!(vf)
+        for i in 1:20
+            v!(vf, p)
+            copy!(vf)
+        end
     end
     return vf.u
     
@@ -84,3 +88,24 @@ _u!(dev::CPU, sz, itp, args...) =
     u_cpu(itp, args...)
 _u!(dev::Union{MetalBackend,CUDABackend}, sz, itp, args...) =
     u_gpu(dev)(itp, args..., ndrange=sz)
+
+function v!(vf::ValueFunctionCache, p)
+    dev = get_backend(vf.v)
+    _v!(dev, vf.grid.n, vf.itp, vf.problem.f, vf.u, vf.v, vf.grid, p, (), ())
+    synchronize(dev)
+end
+
+function v!(vf::LayeredValueFunctionCache, p)
+    dev = get_backend(vf.v)
+    sz = vf.grid.n
+    for (i,xpad) in enumerate(Base.product(range.(vf.layers.first, vf.layers.last, vf.layers.n)...))
+        ipad = lidx_to_cidx(i, vf.layers.n)
+        _v!(dev, sz, vf.itp[i], vf.problem.f, vf.u, vf.v, vf.grid, p, ipad, xpad)
+    end
+    synchronize(dev)
+end
+
+_v!(dev::CPU, sz, itp, args...) =
+    v_cpu(itp, args...)
+_v!(dev::Union{MetalBackend,CUDABackend}, sz, itp, args...) =
+    v_gpu(dev)(itp, args..., ndrange=sz)

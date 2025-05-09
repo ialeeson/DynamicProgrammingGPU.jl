@@ -38,6 +38,27 @@ end
     
 end
 
+function v_cpu(itp, f, u, v, grid, p, ipad, xpad)
+    
+    sitp = ScaledInterpolation(itp, grid)
+    for cidx in CartesianIndices(grid.n)
+        idx = Tuple(cidx)
+        sitp = ScaledInterpolation(itp, grid)
+        x  = grid.first .+ grid.step .* (idx .- 1)
+        v[idx..., ipad...] = f(u[idx..., ipad...], (x..., xpad...), sitp, p)
+    end
+    
+end
+
+@kernel function v_gpu(itp, f, u, v, @Const(grid), @Const(p), @Const(ipad), @Const(xpad))
+    
+    idx = @index(Global, NTuple)
+    sitp = ScaledInterpolation(itp, grid)
+    x  = grid.first .+ grid.step .* (idx .- 1)
+    v[idx..., ipad...] = f(u[idx..., ipad...], (x..., xpad...), sitp, p)
+    
+end
+
 lidx_to_cidx(i, n) = _lidx_to_cidx(i, reverse(n))
 function _lidx_to_cidx(i, n)
     n0, n1 = (first(n), Base.tail(n))

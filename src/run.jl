@@ -16,12 +16,14 @@ import DynamicProgrammingExamples.RBC
 import DynamicProgrammingExamples.RBCPrecompute
 
 function push_time!(filename, t, date, name, n, nsteps)
+    println("name: $name, n: $n, nsteps: $nsteps")
     cpu = @belapsed(solve!(x, p),
         setup = (
             p = getproperty(eval($name), :Parameters)();
             x = getproperty(eval($name), :init)(p,$n)
         )
     )
+    println("CPU: $cpu")
     gpu = @belapsed(solve!(x_cuda, p_cuda),
         setup = (
             p = getproperty(eval($name), :Parameters)();
@@ -30,6 +32,7 @@ function push_time!(filename, t, date, name, n, nsteps)
             x_cuda = mtl(x)
         )
     )
+    println("GPU: $gpu")
     # tex = @belapsed(solve!(x_tex, p_tex),
     #     setup = (
     #         p = getproperty(eval($name), :Parameters)();
