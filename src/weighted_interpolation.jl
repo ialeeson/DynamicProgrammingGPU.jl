@@ -34,8 +34,8 @@ axis_tensor(dev::CPU, dest, src, weights) =
 axis_tensor(dev::Union{MetalBackend, CUDABackend}, dest, src, weights) =
     axis_tensor_gpu(dev)(dest, src, weights, ndrange=size(dest))
 
-struct InPlaceInterpolation{O,A,B,C}
-    itp::Interpolation{O,A}
+struct InPlaceInterpolation{O,BC,A,B,C}
+    itp::Interpolation{O,BC,A}
     weights::B
     tmp::C
 end
