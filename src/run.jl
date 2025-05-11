@@ -51,8 +51,8 @@ t = isfile(filename) ? CSV.read(filename, DataFrame; types) : DataFrame(
     date = DateTime[], name = Symbol[], n = String[],
     cpu = Float64[], gpu = Float64[], tex = Float64[]
 )
-[push_time!(filename, t, date, name, (n,), 10^2) for n in 32 .* 2 .^ (3,5,7),
+[push_time!(filename, t, date, name, (n,), 10^2) for n in 32 .* 2 .^ (12,),
     name in (:CP,)]
-[push_time!(filename, t, date, name, (n,m), 10^2) for n in 32 .* 2 .^ (3,5,7), m in (8,), name in (:RBC,)]
-[push_time!(filename, t, date, name, (n,m), 10^2) for n in 32 .* 2 .^ (3,5,7), m in (8,), name in (:RBCPrecompute,)]
-t
+# [push_time!(filename, t, date, name, (n,m), 10^2) for n in 32 .* 2 .^ (3,5,7), m in (8,), name in (:RBC,)]
+# [push_time!(filename, t, date, name, (n,m), 10^2) for n in 32 .* 2 .^ (3,5,7), m in (8,), name in (:RBCPrecompute,)]
+# t

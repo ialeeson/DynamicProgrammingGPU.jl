@@ -50,8 +50,9 @@ struct LayeredValueFunctionCache{A,M,N,L,F,I,P}
     v::A
     itp::NTuple{M,I}
 end
-copy!(vf::LayeredValueFunctionCache) =
+function copy!(vf::LayeredValueFunctionCache)
     copyto!(vf.itp, vf.layers.n, vf.v)
+end
 
 function solve!(vf::Union{ValueFunctionCache, LayeredValueFunctionCache},
     p; nsteps=1)
@@ -59,7 +60,7 @@ function solve!(vf::Union{ValueFunctionCache, LayeredValueFunctionCache},
     for step in 1:nsteps
         u!(vf, p)
         copy!(vf)
-        for i in 1:20
+        for i in 1:10
             v!(vf, p)
             copy!(vf)
         end

@@ -18,9 +18,15 @@ interpolate(t::PrecomputeInterpolation, x::Vararg{F,N}) where {F,N} =
 
 function copyto!(itp::NTuple{N,PrecomputeInterpolation}, layers, v) where {N}
     l, n = (length(layers), length(size(v)))
+    dev = get_backend(v)
     for i in 1:N
-        copyto!(itp[i], v)
+        axis_tensor(dev, itp[i].tmp, v, itp[i].weights)
     end
+    synchronize(dev)
+    for i in 1:N
+        copyto!(itp[i].itp, itp[i].tmp)
+    end
+    synchronize(dev)
 end
 function copyto!(w::PrecomputeInterpolation, v)
     dev = get_backend(w.tmp)

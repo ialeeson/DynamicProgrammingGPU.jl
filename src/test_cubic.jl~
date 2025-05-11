@@ -1,0 +1,113 @@
+using DynamicProgrammingGPU
+using KernelAbstractions, Metal, BenchmarkTools
+import KernelAbstractions.synchronize
+
+@kernel function prefilter(res, A)
+
+    tmp = @localmem Float32 1024    
+    thread = @index(Local)
+    group = @index(Group)
+    group_sz = prod(@groupsize())
+    offset = (group - 1) * length(tmp)
+    k = cld(length(tmp), group_sz)
+    start = 1 + (thread - 1) * k
+    n = 12
+    
+    α = sqrt(3.0f0) - 2.0f0
+    
+    for i in thread:group_sz:length(tmp)
+        tmp[i] = A[i + offset]
+    end
+
+    tmp[start] = if offset == 0
+        
+        (z, s) = (one(α), zero(α))
+        for i in 0:n-1
+            s += z * tmp[start - i]
+            z *= α
+        end
+        s
+
+    for i in start+1:start+k-1
+        tmp[i] = tmp[i] + α * tmp[i-1]
+    end
+
+    tmp[start] = begin
+        α * tmp[end]
+    end
+    for i in start+k-1:-1:start+1
+        tmp[i] = tmp[i+1] + α * tmp[i]
+    end
+    
+    for i in thread:group_sz:length(tmp)
+        res[i + offset] = tmp[i]
+    end
+end
+
+function test(n...)
+    A = mtl(rand(n...))
+    res = mtl(zeros(n...))
+    t0 = @belapsed DynamicProgrammingGPU.prefilter!(Mirror(), $A)
+    wk_sz = 32
+    t1 = @belapsed begin
+        prefilter(get_backend($A), $wk_sz)(
+            $res, $A, ndrange=cld(prod($n), prod($wk_sz))
+        )
+        synchronize(get_backend($A))
+    end
+    (t0, t1)
+end
+# c_prev = 1.0
+#     for i in 1:k
+#         c = tmp[i] + α * c_prev
+#         tmp[i], c_prev = (c,c)
+#     end
+
+#     ### AntiCausal
+#     c_trans = transmitted_anticausal_coeff(α, coeffs)
+#     c_trans = TransmittedAntiCausalCoefficient(α, bc, coeffs)
+#     λ = 3 * 2 * 1
+#     c = α * inv(α^2 - 1) * (c + c_anti + c_trans)
+#     coeffs[end], c_prev = (λ * c,c)
+#     for i in length(coeffs)-1:-1:1
+#         c = α * (c_prev - coeffs[i])
+#         coeffs[i], c_prev = (λ * c,c)
+#     end    
+
+#     for i in 1:k
+#         tmp[i] = A[i] + α * tmp[i-1]
+#     end
+
+#     for i in k:-1:1
+#         A[i] = α * (A[i+1] - 
+#     end
+    
+
+#     α = sqrt(3*one(F))-2
+#     c = causal_coeff(α, coeffs)
+#     c_anti = anticausal_coeff(α, coeffs)
+    
+#     coeffs[begin], c_prev = (c,c)
+#     for i in 2:length(coeffs)
+#         c = coeffs[i] + α * c_prev
+#         coeffs[i], c_prev = (c,c)
+#     end
+
+#     ### AntiCausal
+#     c_trans = transmitted_anticausal_coeff(α, coeffs)
+#     c_trans = TransmittedAntiCausalCoefficient(α, bc, coeffs)
+#     λ = 3 * 2 * 1
+#     c = α * inv(α^2 - 1) * (c + c_anti + c_trans)
+#     coeffs[end], c_prev = (λ * c,c)
+#     for i in length(coeffs)-1:-1:1
+#         c = α * (c_prev - coeffs[i])
+#         coeffs[i], c_prev = (λ * c,c)
+#     end    
+#     α = sqrt(3) - 2
+#     tmp = @localmem Float32 size(A)
+#     causal_coefficient(α, A)
+#     anticausal_coefficient(α, A)
+#     for idx in 1:12
+#     end
+    
+# end
