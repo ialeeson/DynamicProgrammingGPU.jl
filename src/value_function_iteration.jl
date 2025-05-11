@@ -101,7 +101,8 @@ function v!(vf::LayeredValueFunctionCache, p)
     sz = vf.grid.n
     for (i,xpad) in enumerate(Base.product(range.(vf.layers.first, vf.layers.last, vf.layers.n)...))
         ipad = lidx_to_cidx(i, vf.layers.n)
-        _v!(dev, sz, vf.itp[i], vf.problem.f, vf.u, vf.v, vf.grid, p, ipad, xpad)
+        _v!(dev, sz, vf.itp[i], vf.problem.f, vf.u, vf.v, vf.grid, p,
+            ipad, xpad)
     end
     synchronize(dev)
 end

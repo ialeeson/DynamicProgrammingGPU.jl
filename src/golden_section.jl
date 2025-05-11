@@ -23,7 +23,7 @@ function golden_section(f::F, l::Float64, r::Float64, args) where {F}
     n = 50#unsafe_trunc(Int64, log(tol/(x₄-x₁)) / log(a₁))
 
     i = 1
-    while i < n && x₄-x₁ > tol
+    while i < n# && x₄-x₁ > tol
         if max(fx₁,fx₂) > max(fx₃,fx₄)
             x₃, x₄ = (x₂, x₃)
             x₂ = (x₄ + ϕ * x₁) / (1.0 + ϕ)
@@ -60,7 +60,7 @@ function golden_section(f::F, l::Float32, r::Float32, args) where {F}
     n = 50#unsafe_trunc(Int32, log(tol/(x₄-x₁)) / log(a₁))
 
     i = 1
-    while i < n && x₄-x₁ > tol
+    while i < n# && x₄-x₁ > tol
         if max(fx₁,fx₂) > max(fx₃,fx₄)
             x₃, x₄ = (x₂, x₃)
             x₂ = (x₄ + ϕ * x₁) / (1.0f0 + ϕ)
